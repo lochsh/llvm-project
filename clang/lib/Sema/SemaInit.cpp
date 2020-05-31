@@ -15,6 +15,7 @@
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/ExprObjC.h"
 #include "clang/AST/ExprOpenMP.h"
+#include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/TypeLoc.h"
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/SourceManager.h"
@@ -27,6 +28,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+#include <iostream>
 
 using namespace clang;
 
@@ -9122,9 +9124,34 @@ bool InitializationSequence::Diagnose(Sema &S,
           S.Diag(Kind.getLocation(), diag::err_ovl_deleted_special_init)
             << S.getSpecialMember(cast<CXXMethodDecl>(Best->Function))
             << DestType << ArgsRange;
-        else
+        else {
           S.Diag(Kind.getLocation(), diag::err_ovl_deleted_init)
               << DestType << ArgsRange;
+
+          if (DestType.isConstQualified()) {
+            for (const auto cand : FailedCandidateSet) {
+              if (cand.Function->getNumParams() !=
+                  Best->Function->getNumParams()) {
+                continue;
+              }
+
+              const auto firstArgType =
+                  cand.Function->getParamDecl(0)->getOriginalType();
+              const auto plainDest =
+                  DestType.getNonReferenceType().getSplitDesugaredType().Ty;
+              const auto plainFirst =
+                  firstArgType.getNonReferenceType().getSplitDesugaredType().Ty;
+
+              if ((plainDest == plainFirst) &&
+                  !firstArgType.getQualifiers().hasConst() &&
+                  !cand.Function->isDeleted()) {
+                S.Diag(cand.Function->getLocation(),
+                       diag::err_const_did_you_mean)
+                    << DestType.getUnqualifiedType();
+              }
+            }
+          }
+        }
 
         S.NoteDeletedFunction(Best->Function);
         break;

@@ -4240,6 +4240,8 @@ def err_ref_init_ambiguous : Error<
   "reference initialization of type %0 with initializer of type %1 is ambiguous">;
 def err_ovl_deleted_init : Error<
   "call to deleted constructor of %0">;
+def err_const_did_you_mean : Note<
+  "Did you mean non-const %0?">;
 def err_ovl_deleted_special_init : Error<
   "call to implicitly-deleted %select{default constructor|copy constructor|"
   "move constructor|copy assignment operator|move assignment operator|"
