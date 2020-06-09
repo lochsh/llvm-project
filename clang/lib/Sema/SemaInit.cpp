@@ -8728,10 +8728,9 @@ static void diagnoseListInit(Sema &S, const InitializedEntity &Entity,
          "Inconsistent init list check result.");
 }
 
-bool InitializationSequence::Diagnose(Sema &S,
-                                      const InitializedEntity &Entity,
+bool InitializationSequence::Diagnose(Sema &S, const InitializedEntity &Entity,
                                       const InitializationKind &Kind,
-                                      ArrayRef<Expr *> Args) {
+                                      MutableArrayRef<Expr *> Args) {
   if (!Failed())
     return false;
 
@@ -9129,26 +9128,15 @@ bool InitializationSequence::Diagnose(Sema &S,
               << DestType << ArgsRange;
 
           if (DestType.isConstQualified()) {
-            for (const auto cand : FailedCandidateSet) {
-              if (cand.Function->getNumParams() !=
-                  Best->Function->getNumParams()) {
-                continue;
-              }
-
-              const auto firstArgType =
-                  cand.Function->getParamDecl(0)->getOriginalType();
-              const auto plainDest =
-                  DestType.getNonReferenceType().getSplitDesugaredType().Ty;
-              const auto plainFirst =
-                  firstArgType.getNonReferenceType().getSplitDesugaredType().Ty;
-
-              if ((plainDest == plainFirst) &&
-                  !firstArgType.getQualifiers().hasConst() &&
-                  !cand.Function->isDeleted()) {
-                S.Diag(cand.Function->getLocation(),
-                       diag::err_const_did_you_mean)
-                    << DestType.getUnqualifiedType();
-              }
+            Args[0]->setType(Args[0]->getType().getUnqualifiedType());
+            InitializationSequence nonConstSequence(S, Entity, Kind, Args);
+            if (!nonConstSequence.Perform(S, Entity, Kind, Args).isInvalid()) {
+              OverloadCandidateSet::iterator BestNonConst;
+              nonConstSequence.getFailedCandidateSet().BestViableFunction(
+                  S, Kind.getLocation(), BestNonConst);
+              S.Diag(BestNonConst->Function->getLocation(),
+                     diag::err_const_did_you_mean)
+                  << DestType.getUnqualifiedType();
             }
           }
         }

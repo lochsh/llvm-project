@@ -1161,10 +1161,8 @@ public:
   ///
   /// \returns true if the initialization sequence was ill-formed,
   /// false otherwise.
-  bool Diagnose(Sema &S,
-                const InitializedEntity &Entity,
-                const InitializationKind &Kind,
-                ArrayRef<Expr *> Args);
+  bool Diagnose(Sema &S, const InitializedEntity &Entity,
+                const InitializationKind &Kind, MutableArrayRef<Expr *> Args);
 
   /// Determine the kind of initialization sequence computed.
   enum SequenceKind getKind() const { return SequenceKind; }
